@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+semantic-kernel
+httpx
+tenacity>=8.0.1
+azure-ai-projects
+azure-ai-agents
+azure-search-documents
+azure-core
