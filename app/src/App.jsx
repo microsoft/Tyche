@@ -32,7 +32,7 @@ function App() {
 
   return (
     <div className="chat-container">
-      <h2>ThermoFisher AI Chat</h2>
+      <h2>AI Chat</h2>
       <div className="chat-box">
         {messages.map((msg, idx) => (
           <div key={idx} className={msg.sender === "user" ? "user-msg" : "ai-msg"}>

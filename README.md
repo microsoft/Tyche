@@ -1,4 +1,4 @@
-# ThermoFisher Multi-Agent AI Chat Application
+# Multi-Agent AI Chat Application
 
 This project is a full-stack chat application using Azure OpenAI and Azure AI Search, built with Semantic Kernel. It features a FastAPI backend and a React frontend, designed for multi-agent extensibility.
 
@@ -15,7 +15,7 @@ This project is a full-stack chat application using Azure OpenAI and Azure AI Se
 
 ## Folder Structure
 ```
-ThermoFisher/
+root/
 ├── api/         # FastAPI backend (Python)
 │   └── main.py
 ├── app/         # React frontend (JavaScript)
