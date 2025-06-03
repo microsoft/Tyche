@@ -16,14 +16,25 @@ function App() {
     setLoading(true);
     try {
       const res = await axios.post("/api/chat", userMessage);
-      setMessages((msgs) => [
-        ...msgs,
-        { sender: "ai", text: res.data.response }
-      ]);
+      // Expecting res.data to be an array of { agent, answer }
+      if (Array.isArray(res.data)) {
+        setMessages((msgs) => [
+          ...msgs,
+          ...res.data.map((item) => ({
+            sender: item.agent || "ai",
+            text: item.answer
+          }))
+        ]);
+      } else {
+        setMessages((msgs) => [
+          ...msgs,
+          { sender: "ai", text: res.data.answer || "No answer returned." }
+        ]);
+      }
     } catch (err) {
       setMessages((msgs) => [
         ...msgs,
-        { sender: "ai", text: "Error: Could not get response." }
+        { sender: "ai", text: "Error: Could not get answer." }
       ]);
     } finally {
       setLoading(false);
