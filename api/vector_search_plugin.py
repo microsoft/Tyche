@@ -27,10 +27,8 @@ class VectorSearchPlugin:
 
     def get_aoai_embedding(self, text: str) -> list:
         """Get embedding from Azure OpenAI embeddings deployment."""
-        endpoint = AZURE_OPENAI_EMBEDDINGS_ENDPOINT 
-        # deployment = AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT or "text-embedding-3-small"
+        endpoint = AZURE_OPENAI_EMBEDDINGS_ENDPOINT
         key = AZURE_OPENAI_KEY
-        # url = f"{endpoint}/openai/deployments/{deployment}/embeddings?api-version=2023-05-15"
         headers = {"Content-Type": "application/json", "api-key": key}
         data = {"input": text}
 

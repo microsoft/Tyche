@@ -15,8 +15,6 @@ AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
 AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
 AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
-AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT")
-AZURE_OPENAI_EMBEDDINGS_ENDPOINT = os.getenv("AZURE_OPENAI_EMBEDDINGS_ENDPOINT")
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -63,48 +61,38 @@ class SemanticKernelAgent:
 
     def get_agents(self) -> list[Agent]:
         """Return a list of agents that will participate in the concurrent orchestration.
-
-        Feel free to add or remove agents.
         """
-        # Account Owner agent with search capabilities using the main search index
         account_owner_agent = self.create_agent(
             name="AccountOwner",
             instructions="You manage the relationship between an employee account owner and a customer.  Answer only questions from the knowledge base.",
-            #index_name="azureblob-index"
             index_name="account-owner"              
         )
 
-        # # Chemistry agent without search (regular agent)
-        # chemistry_agent = self.create_agent(
-        #     name="ChemistryExpert",
-        #     instructions="You are an expert in chemistry. You answer questions from a chemistry perspective.",
-        #     index_name=None  # This agent won't have search capabilities
-        # )
         
-        return [account_owner_agent]#, chemistry_agent]
+        threshold_agent = self.create_agent(
+            name="Threshold",
+            instructions="You are and analyst that will examine the data to determine the next best action for the customer.  Answer only questions from the knowledge base.",
+            index_name="threshold"
+        )
+
+        return [account_owner_agent, threshold_agent]
 
     async def chat(self, user: str, message: str):
         agents = self.get_agents()
         concurrent_orchestration = ConcurrentOrchestration(members=agents)
 
-        # 2. Create a runtime and start it
         runtime = InProcessRuntime()
         runtime.start()
 
-        # 3. Invoke the orchestration with a task and the runtime
         orchestration_result = await concurrent_orchestration.invoke(
             task=message,
             runtime=runtime,
         )
 
-        # 4. Wait for the results
-        # Note: the order of the results is not guaranteed to be the same
-        # as the order of the agents in the orchestration.
         value = await orchestration_result.get(timeout=20)
         results = []
         for item in value:
             results.append({"agent": item.name, "answer": item.content})
 
-        # 5. Stop the runtime after the invocation is complete
         await runtime.stop_when_idle()
         return results
