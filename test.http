@@ -9,3 +9,13 @@ Content-Type: application/json
   "user": "testuser",
   "message": "What are the accounts owned by Melissa?"
 }
+
+###
+
+POST http://127.0.0.1:8000/chat
+Content-Type: application/json
+
+{
+  "user": "testuser",
+  "message": "What are the NBAs for Cedars Sinai, and who is the account owner?"
+}
