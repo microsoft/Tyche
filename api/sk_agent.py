@@ -6,7 +6,7 @@ from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 
 from .chat_manager import ChatCompletionGroupChatManager
-from .vector_search_plugin import VectorSearchPlugin
+from .threshold_plugin import VectorSearchPlugin
 from semantic_kernel.contents import ChatMessageContent
 from .agents_config import AGENTS
 

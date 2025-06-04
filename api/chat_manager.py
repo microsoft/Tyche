@@ -25,6 +25,7 @@ class ChatCompletionGroupChatManager(GroupChatManager):
     termination_prompt: str = (
         "You are a reviewer that will examine the information provided by the other agents and determine if it answers the query. "
         "You need to determine if the discussion has reached a conclusion. "
+        "Answers should be provided from each participant, and the discussion should be complete. "
         "If you would like to end the discussion, please respond with True. Otherwise, respond with False."
     )
 
@@ -33,13 +34,16 @@ class ChatCompletionGroupChatManager(GroupChatManager):
         "You need to select the next participant to speak. "
         "Here are the names and descriptions of the participants: "
         "{{$participants}}\n"
-        "Please respond with only the name of the participant you would like to select."
+        "Please respond with only the name of the participant you would like to select." \
+        "Make sure that each participant speaks at least once before selecting the same participant again." \
     )
 
     result_filter_prompt: str = (
         "You are a reviewer that will examine the information provided by the other agents and determine if it answers the query. "
         "You have just concluded the discussion. "
-        "Please summarize the discussion and provide a closing statement."
+        "Provide the information requested by the user in a concise and clear manner." \
+        "Do not include any additional information or context." \
+        "Use bullet points to summarize the key points if applicable." \
     )
 
     def __init__(self, topic: str, service: ChatCompletionClientBase, **kwargs) -> None:

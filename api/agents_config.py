@@ -17,8 +17,11 @@ AGENTS = [
     ),
     AgentConfig(
         name="NBA_Threshold",
-        description="NBA threshold analysis agent",
-        instructions="You are an analyst that will examine the data to determine the next best action or NBA for the customer. Retrieve information from the threshold index.",
+        description="Next Best Action threshold analysis agent",
+        instructions="""
+            NBA means Next Best Action.
+            You are an analyst that will examine the data to determine the next best action for the customer. Retrieve information from the threshold index.
+            """,
         index_name="threshold"
     ),
     AgentConfig(
@@ -26,7 +29,7 @@ AGENTS = [
         description="Action review agent",
         instructions="""
             You are a reviewer that will examine the information provided by the other agents and determine if it answers the query.
-            The respone should be a bulleted list of information that is relevant to the query.
+            If the answer to the question is not found, verify that all agents have provided their answers.
             """,
         index_name=None
     ),
