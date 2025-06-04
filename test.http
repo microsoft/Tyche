@@ -7,14 +7,5 @@ Content-Type: application/json
 
 {
   "user": "testuser",
-  "message": "What are the other accounts owned by Melissa?"
-}
-###
-
-POST http://127.0.0.1:8000/chat
-Content-Type: application/json
-
-{
-  "user": "testuser",
-  "message": "What is velocity?."
+  "message": "What are the accounts owned by Melissa?"
 }

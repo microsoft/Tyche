@@ -4,9 +4,8 @@ from semantic_kernel import Kernel
 from semantic_kernel.agents import Agent, ChatCompletionAgent, ConcurrentOrchestration
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from semantic_kernel.functions import KernelFunction, kernel_function
-from azure.search.documents import SearchClient
-from azure.core.credentials import AzureKeyCredential
+from .vector_search_plugin import VectorSearchPlugin
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -16,39 +15,19 @@ AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
 AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
 AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
-AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
+AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT")
+AZURE_OPENAI_EMBEDDINGS_ENDPOINT = os.getenv("AZURE_OPENAI_EMBEDDINGS_ENDPOINT")
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class AzureSearchPlugin:
-    """Plugin to enable Azure AI Search capabilities for agents."""
-    
-    def __init__(self, search_endpoint: str, search_key: str, index_name: str):
-        self.search_client = SearchClient(
-            endpoint=search_endpoint,
-            index_name=index_name,
-            credential=AzureKeyCredential(search_key)
-        )
-
-    @kernel_function(
-        description="Search Azure AI Search index for relevant information",
-        name="search_knowledge_base",
-    )
-    def search_knowledge_base(self, query: str) -> str:
-        """Search the Azure AI Search index for relevant information."""
-        results = self.search_client.search(query)
-        context_strings = []
-        for result in results:
-            context_strings.append(f"Document: {result['content']}")
-        return "\n\n".join(context_strings) if context_strings else "No results found"
 
         
 
 class SemanticKernelAgent:
     
-    def create_agent_with_search(self, name: str, instructions: str, index_name: str = None) -> ChatCompletionAgent:
+    def create_agent(self, name: str, instructions: str, index_name: str = None) -> ChatCompletionAgent:
         """Create an agent with optional Azure AI Search capabilities."""
         
         # Create kernel for the agent
@@ -61,13 +40,14 @@ class SemanticKernelAgent:
             )
         )
         
-       
-        search_plugin = AzureSearchPlugin(
-            search_endpoint=AZURE_SEARCH_ENDPOINT,
-            search_key=AZURE_SEARCH_KEY,
-            index_name=index_name
-        )
-        kernel.add_plugin(search_plugin, plugin_name="SearchPlugin")
+        if (index_name is not None and index_name != ""):
+        # Add Azure AI Search plugin if index_name is provided  
+            search_plugin = VectorSearchPlugin(
+                search_endpoint=AZURE_SEARCH_ENDPOINT,
+                search_key=AZURE_SEARCH_KEY,
+                index_name=index_name
+            )
+            kernel.add_plugin(search_plugin, plugin_name="VectorSearchPlugin")
         
                
         return ChatCompletionAgent(
@@ -87,15 +67,15 @@ class SemanticKernelAgent:
         Feel free to add or remove agents.
         """
         # Account Owner agent with search capabilities using the main search index
-        account_owner_agent = self.create_agent_with_search(
+        account_owner_agent = self.create_agent(
             name="AccountOwner",
             instructions="You manage the relationship between an employee account owner and a customer.  Answer only questions from the knowledge base.",
-            index_name="azureblob-index"
-            #index_name="account-owner"              
+            #index_name="azureblob-index"
+            index_name="account-owner"              
         )
 
         # # Chemistry agent without search (regular agent)
-        # chemistry_agent = self.create_agent_with_search(
+        # chemistry_agent = self.create_agent(
         #     name="ChemistryExpert",
         #     instructions="You are an expert in chemistry. You answer questions from a chemistry perspective.",
         #     index_name=None  # This agent won't have search capabilities

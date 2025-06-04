@@ -42,6 +42,8 @@ root/
    - `AZURE_OPENAI_DEPLOYMENT`
    - `AZURE_SEARCH_ENDPOINT`
    - `AZURE_SEARCH_KEY`
+   - `AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT`
+   - `AZURE_OPENAI_EMBEDDINGS_ENDPOINT`
    - `AZURE_SEARCH_INDEX`
 
    You can use a `.env` file or set them in your shell.
