@@ -4,7 +4,8 @@ from semantic_kernel import Kernel
 from semantic_kernel.agents import Agent, ChatCompletionAgent, ConcurrentOrchestration
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from .vector_search_plugin import VectorSearchPlugin
+from .plugins.threshold_plugin import ThresholdPlugin
+from .plugins.account_owner_plugin import AccountOwnerPlugin
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class SemanticKernelAgent:
     
-    def create_agent(self, name: str, instructions: str, index_name: str = None) -> ChatCompletionAgent:
+    def create_agent(self, name: str, instructions: str) -> ChatCompletionAgent:
         """Create an agent with optional Azure AI Search capabilities."""
         
         # Create kernel for the agent
@@ -38,16 +39,12 @@ class SemanticKernelAgent:
             )
         )
         
-        if (index_name is not None and index_name != ""):
-        # Add Azure AI Search plugin if index_name is provided  
-            search_plugin = VectorSearchPlugin(
-                search_endpoint=AZURE_SEARCH_ENDPOINT,
-                search_key=AZURE_SEARCH_KEY,
-                index_name=index_name
-            )
-            kernel.add_plugin(search_plugin, plugin_name="VectorSearchPlugin")
-        
-               
+    
+        threshold_plugin_instance = ThresholdPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
+        account_owner_plugin_instance = AccountOwnerPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
+        kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
+        kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
+
         return ChatCompletionAgent(
             name=name,
             instructions=instructions,
@@ -62,20 +59,25 @@ class SemanticKernelAgent:
     def get_agents(self) -> list[Agent]:
         """Return a list of agents that will participate in the concurrent orchestration.
         """
-        account_owner_agent = self.create_agent(
-            name="AccountOwner",
-            instructions="You manage the relationship between an employee account owner and a customer.  Answer only questions from the knowledge base.",
-            index_name="account-owner"              
+        action_review_agent = self.create_agent(
+            name="ActionReview",
+            instructions="""
+            You are an analyst specializing in determining the Next Best Action (NBA) for customers using the threshold plugin.\nAnalyze the provided data and recommend the most appropriate next steps for the customer.\nYour answer must be concise, actionable, and formatted as a bulleted list.\nOnly use information from the knowledge base and threshold plugin to support your answer.\n\n####\nExample:\nUser: What is the next best action for the customer?\n- Offer a discount on their next purchase\n- Increase Credit Limit to 50,000\n""",
         )
+        # account_owner_agent = self.create_agent(
+        #     name="AccountOwner",
+        #     instructions="You manage the relationship between an employee account owner and a customer.  Answer only questions from the knowledge base.",
+        #     index_name="account-owner"              
+        # )
 
         
-        threshold_agent = self.create_agent(
-            name="Threshold",
-            instructions="You are and analyst that will examine the data to determine the next best action for the customer.  Answer only questions from the knowledge base.",
-            index_name="threshold"
-        )
+        # threshold_agent = self.create_agent(
+        #     name="Threshold",
+        #     instructions="You are and analyst that will examine the data to determine the next best action for the customer.  Answer only questions from the knowledge base.",
+        #     index_name="threshold"
+        # )
 
-        return [account_owner_agent, threshold_agent]
+        return [action_review_agent]
 
     async def chat(self, user: str, message: str):
         agents = self.get_agents()

@@ -15,13 +15,13 @@ AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
 AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT")
 AZURE_OPENAI_EMBEDDINGS_ENDPOINT = os.getenv("AZURE_OPENAI_EMBEDDINGS_ENDPOINT")
 
-class VectorSearchPlugin:
-    """Plugin to enable Azure AI Search vector search capabilities."""
+class ThresholdPlugin:
+    """Plugin to enable Azure AI Search threshold search capabilities."""
 
-    def __init__(self, search_endpoint: str, search_key: str, index_name: str):
+    def __init__(self, search_endpoint: str, search_key: str):
         self.search_client = SearchClient(
             endpoint=search_endpoint,
-            index_name=index_name,
+            index_name="threshold",
             credential=AzureKeyCredential(search_key)
         )
 
@@ -37,10 +37,10 @@ class VectorSearchPlugin:
         return response.json()["data"][0]["embedding"]
 
     @kernel_function(
-        description="Vector search Azure AI Search index for relevant information",
-        name="vector_search_knowledge_base",
+        description="Threshold search Azure AI Search index for relevant information",
+        name="threshold_search",
     )
-    def vector_search_knowledge_base(self, query: str, k: int = 3) -> str:
+    def threshold_search(self, query: str, k: int = 3) -> str:
         """Vector search the Azure AI Search index for relevant information."""
         embedding = self.get_aoai_embedding(query)
 
