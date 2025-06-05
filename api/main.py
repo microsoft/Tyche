@@ -42,12 +42,3 @@ async def chat(request: ChatRequest):
 def health():
     return {"status": "ok"}
 
-# ---
-# Notes:
-# - This is a single agent in a multi-agent architecture (extendable for more agents)
-# - All credentials/configuration are loaded from environment variables for security
-# - Error handling and logging are included
-# - Semantic Kernel is used for both Azure OpenAI and Azure AI Search
-# - For production, use managed identity or Key Vault for secrets
-# - For multi-agent, instantiate and route to multiple agents in the future
-# ---
