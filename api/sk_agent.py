@@ -4,6 +4,9 @@ from semantic_kernel import Kernel
 from semantic_kernel.agents import Agent, ChatCompletionAgent, ConcurrentOrchestration
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
+
+from api.plugins.increase_credit_limit_plugin import IncreaseCreditLimitPlugin
+from api.plugins.invoice_aging_plugin import InvoiceAgingPlugin
 from .plugins.threshold_plugin import ThresholdPlugin
 from .plugins.account_owner_plugin import AccountOwnerPlugin
 
@@ -41,9 +44,13 @@ class SemanticKernelAgent:
         
     
         threshold_plugin_instance = ThresholdPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
+        increase_credit_limit_plugin_instance = IncreaseCreditLimitPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
+        invoice_aging_plugin_instance = InvoiceAgingPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
         account_owner_plugin_instance = AccountOwnerPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
         kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
         kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
+        kernel.add_plugin(increase_credit_limit_plugin_instance, plugin_name="IncreaseCreditLimitPlugin")
+        kernel.add_plugin(invoice_aging_plugin_instance, plugin_name="InvoiceAgingPlugin")
 
         return ChatCompletionAgent(
             name=name,
@@ -66,7 +73,10 @@ class SemanticKernelAgent:
             Analyze the provided data and recommend the most appropriate next steps for the customer.
             Your answer must be concise, actionable, and formatted as a bulleted list.
             Only use information from the knowledge base and threshold plugin to support your answer.
-            There may be more than one possible action in the query, so provide all relevant answers.
+            There may be more than one possible answer to the query, so provide all relevant answers.
+            If the question is about the account owner, use the account owner plugin to answer.
+            If the question is about increasing the credit limit, use the increase credit limit plugin to answer.
+            If the question is about invoice aging, use the invoice aging plugin to answer.
             ###Example###
             User: What is the next best action for the customer and who is the owner?
             - Offer a discount on their next purchase
