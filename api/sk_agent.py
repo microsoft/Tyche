@@ -1,7 +1,7 @@
 import os
 import logging
 from semantic_kernel import Kernel
-from semantic_kernel.agents import Agent, ChatCompletionAgent, ConcurrentOrchestration
+from semantic_kernel.agents import Agent, ChatCompletionAgent, HandoffOrchestration, OrchestrationHandoffs
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 
@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
         
 
 class SemanticKernelAgent:
-    
-    def create_agent(self, name: str, instructions: str) -> ChatCompletionAgent:
+
+    def create_agent(self, name: str, instructions: str, description: str, plugins: list[object]) -> ChatCompletionAgent:
         """Create an agent with optional Azure AI Search capabilities."""
         
         # Create kernel for the agent
@@ -44,56 +44,66 @@ class SemanticKernelAgent:
         )
         
     
-        threshold_plugin_instance = ThresholdPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
+        #threshold_plugin_instance = ThresholdPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
         # increase_credit_limit_plugin_instance = IncreaseCreditLimitPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
         # invoice_aging_plugin_instance = InvoiceAgingPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
-        account_owner_plugin_instance = AccountOwnerPlugin()
-        improve_order_velocity_plugin_instance = ImproveOrderVelocityPlugin()
-        kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
-        kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
-        kernel.add_plugin(improve_order_velocity_plugin_instance, plugin_name="ImproveOrderVelocityPlugin")
+        # account_owner_plugin_instance = AccountOwnerPlugin()
+        # improve_order_velocity_plugin_instance = ImproveOrderVelocityPlugin()
+        # kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
+        # kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
+        # kernel.add_plugin(improve_order_velocity_plugin_instance, plugin_name="ImproveOrderVelocityPlugin")
         # kernel.add_plugin(increase_credit_limit_plugin_instance, plugin_name="IncreaseCreditLimitPlugin")
         # kernel.add_plugin(invoice_aging_plugin_instance, plugin_name="InvoiceAgingPlugin")
 
         return ChatCompletionAgent(
             name=name,
             instructions=instructions,
+            description=description,
             kernel=kernel,
             service=AzureChatCompletion(
                 endpoint=AZURE_OPENAI_ENDPOINT,
                 api_key=AZURE_OPENAI_KEY,
                 deployment_name=AZURE_OPENAI_DEPLOYMENT
             ),
+            plugins=plugins
         )
 
-    def get_agents(self) -> list[Agent]:
-        """Return a list of agents that will participate in the concurrent orchestration.
+    def get_agents(self) -> tuple[list[Agent], OrchestrationHandoffs]:
+        """Return a list of agents that will participate in the Handoff orchestration and the handoff relationships.
         """
-        action_review_agent = self.create_agent(
-            name="ActionReview",            
+        orchestrator_agent = self.create_agent(
+            name="OrchestratorAgent",
+            description="Main orchestrator agent. Triages user requests and hands off to the appropriate specialized agent for resolution.",
+            instructions="""
+            You are the main orchestrator. Your job is to analyze the user's request, determine which specialized agent is best suited to handle it, and hand off the task. 
+            If a request requires multiple steps, coordinate the handoff between agents as needed. 
+            Do not attempt to solve specialized tasks yourself—always delegate to the appropriate agent.
+            """,
+            plugins=[]
+        )
+
+
+
+        threshold_review_agent = self.create_agent(
+            name="ThresholdReview", 
+            description="Agent that reviews the threshold for the next best action and determines the account owner.",           
             instructions="""
             You are an analyst specializing in determining the Next Best Action (NBA) for customers using the threshold plugin.
-
-            ROLE AND RESPONSIBILITIES:
-            - Analyze the provided data and recommend the most appropriate next steps for the customer
-            - Only use information from the knowledge base and threshold plugin to support your answer
-            - There may be more than one possible answer to the query, so provide all relevant data
-            - If the question is about the account owner, use the account owner plugin to get data
-            - If the question is about improving order velocity, use the improve OrderVelocity agent
-
-
+            You also have access to the AccountOwnerPlugin to determine the account owner.
             ### EXAMPLE OUTPUT FORMAT ###
             User: What is the next best action for the customer and who is the owner?
             Response:
             - Offer a discount on their next purchase
             - Increase Credit Limit to 50,000
             - Account Owner: Bob Smith
-            """
+            """,
+            plugins=[ThresholdPlugin(), AccountOwnerPlugin()]
         )
 
 
         order_velocity_agent = self.create_agent(
             name="OrderVelocity",
+            description="Agent that improves order velocity for customers by analyzing order holds and taking appropriate actions.",
             instructions="""
             You are an expert in improving order velocity for customers. Use the ImproveOrderVelocityPlugin to analyze the data and provide recommendations.
             RULES FOR IMPROVING ORDER VELOCITY:
@@ -130,33 +140,55 @@ class SemanticKernelAgent:
                         a. If in the future, no action
                     2. If in the past, check order in E1 for updates and reach out to appropriate internal team for update/action
             """,
+            plugins=[ImproveOrderVelocityPlugin()]
         )
 
         
-        # threshold_agent = self.create_agent(
-        #     name="Threshold",
-        #     instructions="You are and analyst that will examine the data to determine the next best action for the customer.  Answer only questions from the knowledge base.",
-        #     index_name="threshold"
-        # )
+        # Define the handoff relationships between agents
+        handoffs = (
+            OrchestrationHandoffs()
+            .add_many(
+                source_agent=orchestrator_agent.name,
+                target_agents={
+                    order_velocity_agent.name: "Transfer to this agent if they need to Improve Order Velocity",
+                    threshold_review_agent.name: "Transfer to this agent if they need to review the threshold for the next best action or determine the account owner",
+                },
+            )
+            .add(
+                source_agent=order_velocity_agent.name,
+                target_agent=orchestrator_agent.name,
+                description="Transfer to the orchestrator agent if the order velocity issue is resolved or requires further action.",
+            )     
+            .add(
+                source_agent=threshold_review_agent.name,
+                target_agent=orchestrator_agent.name,
+                description="Transfer to the orchestrator agent if the NBA is determined, account owner is identified, or further action is required.",
+            )
+        )
 
-        return [action_review_agent, order_velocity_agent]
+        return [orchestrator_agent, order_velocity_agent, threshold_review_agent], handoffs
 
     async def chat(self, user: str, message: str):
-        agents = self.get_agents()
-        concurrent_orchestration = ConcurrentOrchestration(members=agents)
+        agents, handoffs = self.get_agents()
+        handoff_orchestration = HandoffOrchestration(
+            members=agents,
+            handoffs=handoffs,
+            # agent_response_callback=agent_response_callback,
+            # human_response_function=human_response_function,
+        )
 
         runtime = InProcessRuntime()
         runtime.start()
 
-        orchestration_result = await concurrent_orchestration.invoke(
+        orchestration_result = await handoff_orchestration.invoke(
             task=message,
             runtime=runtime,
         )
 
-        value = await orchestration_result.get(timeout=20)
-        results = []
-        for item in value:
-            results.append({"agent": item.name, "answer": item.content})
+        value = await orchestration_result.get()
+        # results = []
+        # for item in value:
+        #     results.append({"agent": item.name, "answer": item.content})
 
         await runtime.stop_when_idle()
-        return results
+        return value
