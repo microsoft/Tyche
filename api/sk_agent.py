@@ -150,8 +150,8 @@ class SemanticKernelAgent:
             .add_many(
                 source_agent=orchestrator_agent.name,
                 target_agents={
+                    threshold_review_agent.name: "Transfer to this agent first to determine the next best action or determine the account owner",
                     order_velocity_agent.name: "Transfer to this agent if they need to Improve Order Velocity",
-                    threshold_review_agent.name: "Transfer to this agent if they need to review the threshold for the next best action or determine the account owner",
                 },
             )
             .add(
