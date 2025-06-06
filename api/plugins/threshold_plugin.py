@@ -4,8 +4,8 @@ from .base_vector_search_plugin import BaseVectorSearchPlugin
 class ThresholdPlugin(BaseVectorSearchPlugin):
     """Plugin to enable Azure AI Search threshold search capabilities."""
 
-    def __init__(self, search_endpoint: str, search_key: str):
-         super().__init__("threshold")
+    def __init__(self):
+        super().__init__("threshold")
 
     @kernel_function(
         description="Threshold search Azure AI Search index for relevant information",
