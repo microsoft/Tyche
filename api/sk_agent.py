@@ -67,6 +67,11 @@ class SemanticKernelAgent:
             instructions="You manage the relationship between an employee account owner and a customer.  Answer only questions from the knowledge base.",
             index_name="account-owner"              
         )
+        test_owner_agent = self.create_agent(
+            name="TestOwner",
+            instructions="Answer questions asked",
+            index_name= None              
+        )
 
         
         threshold_agent = self.create_agent(
@@ -75,7 +80,7 @@ class SemanticKernelAgent:
             index_name="threshold"
         )
 
-        return [account_owner_agent, threshold_agent]
+        return [test_owner_agent]
 
     async def chat(self, user: str, message: str):
         agents = self.get_agents()

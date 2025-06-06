@@ -2,7 +2,7 @@ GET http://127.0.0.1:8000/health
 
 ###
 
-POST http://127.0.0.1:8000/chat
+POST https://zany-space-bassoon-jvxgqxrg5q9h45g-8000.app.github.dev/chat
 Content-Type: application/json
 
 {
