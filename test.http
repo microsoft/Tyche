@@ -7,7 +7,7 @@ Content-Type: application/json
 
 {
   "user": "testuser",
-  "message": "What are the accounts owned by Melissa?"
+  "message": "What are the accounts for Melissa.  Show the NBAs for each of her accounts?"
 }
 
 ###
@@ -17,5 +17,5 @@ Content-Type: application/json
 
 {
   "user": "testuser",
-  "message": "What are the NBAs for Cedars Sinai, and who is the account owner?"
+  "message": "What are the NBAs for 2Seventy BIO and who is the account owner?"
 }

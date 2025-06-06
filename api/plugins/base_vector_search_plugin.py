@@ -1,7 +1,6 @@
 import os
 import logging
 import requests
-from semantic_kernel.functions import kernel_function
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents.models import VectorizableTextQuery
@@ -14,15 +13,18 @@ AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
 AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT")
 AZURE_OPENAI_EMBEDDINGS_ENDPOINT = os.getenv("AZURE_OPENAI_EMBEDDINGS_ENDPOINT")
+AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
+AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
 
-class VectorSearchPlugin:
-    """Plugin to enable Azure AI Search vector search capabilities."""
 
-    def __init__(self, search_endpoint: str, search_key: str, index_name: str):
+class BaseVectorSearchPlugin:
+    """Base plugin class for Azure AI Search capabilities."""
+
+    def __init__(self, index_name: str):
         self.search_client = SearchClient(
-            endpoint=search_endpoint,
+            endpoint=AZURE_SEARCH_ENDPOINT,
             index_name=index_name,
-            credential=AzureKeyCredential(search_key)
+            credential=AzureKeyCredential(AZURE_SEARCH_KEY)
         )
 
     def get_aoai_embedding(self, text: str) -> list:
@@ -36,12 +38,8 @@ class VectorSearchPlugin:
         response.raise_for_status()
         return response.json()["data"][0]["embedding"]
 
-    @kernel_function(
-        description="Vector search Azure AI Search index for relevant information",
-        name="vector_search_knowledge_base",
-    )
-    def vector_search_knowledge_base(self, query: str, k: int = 3) -> str:
-        """Vector search the Azure AI Search index for relevant information."""
+    def search_index(self, query: str, k: int = 3) -> str:
+        """Search the Azure AI Search index for relevant information."""
         embedding = self.get_aoai_embedding(query)
 
         vector_queries = [VectorizableTextQuery(text=query, k_nearest_neighbors=k, fields="text_vector")]
