@@ -4,6 +4,7 @@ from semantic_kernel import Kernel
 from semantic_kernel.agents import Agent, ChatCompletionAgent, HandoffOrchestration, OrchestrationHandoffs
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
+from semantic_kernel.contents import ChatMessageContent
 
 from api.plugins.improve_order_velocity_plugin import ImproveOrderVelocityPlugin
 from api.plugins.increase_credit_limit_plugin import IncreaseCreditLimitPlugin
@@ -168,12 +169,16 @@ class SemanticKernelAgent:
 
         return [orchestrator_agent, order_velocity_agent, threshold_review_agent], handoffs
 
+    def agent_response_callback(self, message: ChatMessageContent) -> None:
+        """Observer function to print the messages from the agents."""
+        print(f"{message.name}: {message.content}")
+
     async def chat(self, user: str, message: str):
         agents, handoffs = self.get_agents()
         handoff_orchestration = HandoffOrchestration(
             members=agents,
             handoffs=handoffs,
-            # agent_response_callback=agent_response_callback,
+            agent_response_callback=self.agent_response_callback,
             # human_response_function=human_response_function,
         )
 
