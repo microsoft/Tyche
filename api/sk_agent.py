@@ -79,8 +79,23 @@ class SemanticKernelAgent:
             - Only use information from the knowledge base and threshold plugin to support your answer
             - There may be more than one possible answer to the query, so provide all relevant data
             - If the question is about the account owner, use the account owner plugin to get data
-            - If the question is about improving order velocity, use the improve order velocity plugin to get data
+            - If the question is about improving order velocity, use the improve OrderVelocity agent
 
+
+            ### EXAMPLE OUTPUT FORMAT ###
+            User: What is the next best action for the customer and who is the owner?
+            Response:
+            - Offer a discount on their next purchase
+            - Increase Credit Limit to 50,000
+            - Account Owner: Bob Smith
+            """
+        )
+
+
+        order_velocity_agent = self.create_agent(
+            name="OrderVelocity",
+            instructions="""
+            You are an expert in improving order velocity for customers. Use the ImproveOrderVelocityPlugin to analyze the data and provide recommendations.
             RULES FOR IMPROVING ORDER VELOCITY:
 
             1. C2 CREDIT HOLDS: Improve Order Velocity
@@ -114,22 +129,8 @@ class SemanticKernelAgent:
                     1. When is the order release date?
                         a. If in the future, no action
                     2. If in the past, check order in E1 for updates and reach out to appropriate internal team for update/action
-
-            ### EXAMPLE OUTPUT FORMAT ###
-            User: What is the next best action for the customer and who is the owner?
-            Response:
-            - Offer a discount on their next purchase
-            - Increase Credit Limit to 50,000
-            - Account Owner: Bob Smith
-            """
+            """,
         )
-
-
-        # account_owner_agent = self.create_agent(
-        #     name="AccountOwner",
-        #     instructions="You manage the relationship between an employee account owner and a customer.  Answer only questions from the knowledge base.",
-        #     index_name="account-owner"              
-        # )
 
         
         # threshold_agent = self.create_agent(
@@ -138,7 +139,7 @@ class SemanticKernelAgent:
         #     index_name="threshold"
         # )
 
-        return [action_review_agent]
+        return [action_review_agent, order_velocity_agent]
 
     async def chat(self, user: str, message: str):
         agents = self.get_agents()
