@@ -7,6 +7,15 @@ Content-Type: application/json
 
 {
   "user": "testuser",
+  "message": "What accounts does Katherine own?"
+}
+###
+
+POST http://127.0.0.1:8000/chat
+Content-Type: application/json
+
+{
+  "user": "testuser",
   "message": "What are Katherine's customers that have a RR hold?"
 }
 
@@ -17,5 +26,5 @@ Content-Type: application/json
 
 {
   "user": "testuser",
-  "message": "What are the NBAs for 2Seventy BIO and who is the account owner?"
+  "message": "What are the NBAs for 2Seventy BIO?"
 }

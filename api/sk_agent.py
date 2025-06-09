@@ -5,10 +5,9 @@ from semantic_kernel.agents import Agent, ChatCompletionAgent, HandoffOrchestrat
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.contents import ChatMessageContent
+from semantic_kernel.contents import FinishReason
 
 from api.plugins.improve_order_velocity_plugin import ImproveOrderVelocityPlugin
-from api.plugins.increase_credit_limit_plugin import IncreaseCreditLimitPlugin
-from api.plugins.invoice_aging_plugin import InvoiceAgingPlugin
 from .plugins.threshold_plugin import ThresholdPlugin
 from .plugins.account_owner_plugin import AccountOwnerPlugin
 
@@ -26,83 +25,76 @@ AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+results = []
 
         
 
 class SemanticKernelAgent:
 
-    def create_agent(self, name: str, instructions: str, description: str, plugins: list[object]) -> ChatCompletionAgent:
-        """Create an agent with optional Azure AI Search capabilities."""
-        
-        # Create kernel for the agent
-        kernel = Kernel()
-        kernel.add_service(
-            AzureChatCompletion(
-                endpoint=AZURE_OPENAI_ENDPOINT,
-                api_key=AZURE_OPENAI_KEY,
-                deployment_name=AZURE_OPENAI_DEPLOYMENT
-            )
-        )
-        
     
-        #threshold_plugin_instance = ThresholdPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
-        # increase_credit_limit_plugin_instance = IncreaseCreditLimitPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
-        # invoice_aging_plugin_instance = InvoiceAgingPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
-        # account_owner_plugin_instance = AccountOwnerPlugin()
-        # improve_order_velocity_plugin_instance = ImproveOrderVelocityPlugin()
-        # kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
-        # kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
-        # kernel.add_plugin(improve_order_velocity_plugin_instance, plugin_name="ImproveOrderVelocityPlugin")
-        # kernel.add_plugin(increase_credit_limit_plugin_instance, plugin_name="IncreaseCreditLimitPlugin")
-        # kernel.add_plugin(invoice_aging_plugin_instance, plugin_name="InvoiceAgingPlugin")
-
-        return ChatCompletionAgent(
-            name=name,
-            instructions=instructions,
-            description=description,
-            kernel=kernel,
+    def get_agents(self) -> tuple[list[Agent], OrchestrationHandoffs]:
+        """Return a list of agents that will participate in the Handoff orchestration and the handoff relationships, including the FinalAnswerAgent."""
+        support_agent = ChatCompletionAgent(
+            name="TriageAgent",
+            description="An agent that triages issues.",
+            instructions="Handle API requests. NBA stands for Next Best Action. ALWAYS use the final answer agent to provide the final answer with no additional questions or comments.",
             service=AzureChatCompletion(
                 endpoint=AZURE_OPENAI_ENDPOINT,
                 api_key=AZURE_OPENAI_KEY,
                 deployment_name=AZURE_OPENAI_DEPLOYMENT
             ),
-            plugins=plugins
         )
 
-    def get_agents(self) -> tuple[list[Agent], OrchestrationHandoffs]:
-        """Return a list of agents that will participate in the Handoff orchestration and the handoff relationships.
-        """
-        orchestrator_agent = self.create_agent(
-            name="OrchestratorAgent",
-            description="Main orchestrator agent. Triages user requests and hands off to the appropriate specialized agent for resolution.",
+        account_owner_agent = ChatCompletionAgent(
+            name="AccountOwnerAgent",
+            description="Agent that determines the account owners for a customer",
             instructions="""
-            You are the main orchestrator. Your job is to analyze the user's request, determine which specialized agent is best suited to handle it, and hand off the task. 
-            If a request requires multiple steps, coordinate the handoff between agents as needed. 
-            Do not attempt to solve specialized tasks yourself—always delegate to the appropriate agent.
+            You can determine the account owner using the AccountOwnerPlugin.
+            ### EXAMPLE OUTPUT FORMAT ###
+            User: Who is the account owner for Contoso?
+            Response:
+            - Account Owner: Alice Johnson
             """,
-            plugins=[]
+            service=AzureChatCompletion(
+                endpoint=AZURE_OPENAI_ENDPOINT,
+                api_key=AZURE_OPENAI_KEY,
+                deployment_name=AZURE_OPENAI_DEPLOYMENT
+            ),
+            plugins=[AccountOwnerPlugin()]
         )
 
-
-
-        threshold_review_agent = self.create_agent(
+        final_answer_agent = ChatCompletionAgent(
+            name="FinalAnswerAgent",
+            description="An agent that provides the final answer with no additional questions or comments.",
+            instructions="Provide the final answer to the user without any additional questions or comments.",
+            service=AzureChatCompletion(
+                endpoint=AZURE_OPENAI_ENDPOINT,
+                api_key=AZURE_OPENAI_KEY,
+                deployment_name=AZURE_OPENAI_DEPLOYMENT
+            ),
+            plugins=[] 
+        )
+        threshold_review_agent = ChatCompletionAgent(
             name="ThresholdReview", 
             description="Agent that reviews the threshold for the next best action and determines the account owner.",           
             instructions="""
             You are an analyst specializing in determining the Next Best Action (NBA) for customers using the threshold plugin.
-            You also have access to the AccountOwnerPlugin to determine the account owner.
             ### EXAMPLE OUTPUT FORMAT ###
             User: What is the next best action for the customer and who is the owner?
             Response:
             - Offer a discount on their next purchase
             - Increase Credit Limit to 50,000
-            - Account Owner: Bob Smith
             """,
-            plugins=[ThresholdPlugin(), AccountOwnerPlugin()]
+            service=AzureChatCompletion(
+                endpoint=AZURE_OPENAI_ENDPOINT,
+                api_key=AZURE_OPENAI_KEY,
+                deployment_name=AZURE_OPENAI_DEPLOYMENT
+            ),
+            plugins=[ThresholdPlugin()]
         )
 
 
-        order_velocity_agent = self.create_agent(
+        order_velocity_agent = ChatCompletionAgent(
             name="OrderVelocity",
             description="Agent that improves order velocity for customers by analyzing order holds and taking appropriate actions.",
             instructions="""
@@ -141,6 +133,11 @@ class SemanticKernelAgent:
                         a. If in the future, no action
                     2. If in the past, check order in E1 for updates and reach out to appropriate internal team for update/action
             """,
+            service=AzureChatCompletion(
+                endpoint=AZURE_OPENAI_ENDPOINT,
+                api_key=AZURE_OPENAI_KEY,
+                deployment_name=AZURE_OPENAI_DEPLOYMENT
+            ),
             plugins=[ImproveOrderVelocityPlugin()]
         )
 
@@ -149,31 +146,42 @@ class SemanticKernelAgent:
         handoffs = (
             OrchestrationHandoffs()
             .add_many(
-                source_agent=orchestrator_agent.name,
+                source_agent=support_agent.name,
                 target_agents={
-                    threshold_review_agent.name: "Transfer to this agent first to determine the next best action or determine the account owner",
+                    threshold_review_agent.name: "Transfer to this agent first to determine the next best action (NBA).",
                     order_velocity_agent.name: "Transfer to this agent if they need to Improve Order Velocity",
+                    account_owner_agent.name: "Transfer to this agent if the account owner needs to be determined",
+                    final_answer_agent.name: "Transfer to this agent if the finish reason is stop to provide the final answer with no additional questions or comments.",
                 },
             )
             .add(
                 source_agent=order_velocity_agent.name,
-                target_agent=orchestrator_agent.name,
-                description="Transfer to the orchestrator agent if the order velocity issue is resolved or requires further action.",
+                target_agent=support_agent.name,
+                description="Transfer to the support agent if the order velocity issue is resolved or requires further action.",
             )     
             .add(
                 source_agent=threshold_review_agent.name,
-                target_agent=orchestrator_agent.name,
-                description="Transfer to the orchestrator agent if the NBA is determined, account owner is identified, or further action is required.",
+                target_agent=support_agent.name,
+                description="Transfer to the support agent if the NBA/next best action is determined or further action is required.",
             )
+            .add(
+                source_agent=account_owner_agent.name,
+                target_agent=support_agent.name,
+                description="Always transfer to the support agent after a response.",
+                )
         )
 
-        return [orchestrator_agent, order_velocity_agent, threshold_review_agent], handoffs
+        return [support_agent, account_owner_agent, final_answer_agent, threshold_review_agent, order_velocity_agent], handoffs
 
     def agent_response_callback(self, message: ChatMessageContent) -> None:
-        """Observer function to print the messages from the agents."""
-        print(f"{message.name}: {message.content}")
+        """Observer function to print the messages from the agents. Only append if from FinalAnswerAgent."""
+        #if message.finish_reason == FinishReason.STOP:
+            # if message.name == "FinalAnswerAgent":
+        self.results.append(message.content)
 
+    
     async def chat(self, user: str, message: str):
+        self.results = []
         agents, handoffs = self.get_agents()
         handoff_orchestration = HandoffOrchestration(
             members=agents,
@@ -191,9 +199,9 @@ class SemanticKernelAgent:
         )
 
         value = await orchestration_result.get()
-        # results = []
+        # 
         # for item in value:
-        #     results.append({"agent": item.name, "answer": item.content})
+        #     results.append({"agent": item.body.items[0].name, "answer": item.body.items[0].text})
 
         await runtime.stop_when_idle()
-        return value
+        return self.results
