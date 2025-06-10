@@ -26,7 +26,6 @@ function App() {
           </li>
         );
       }
-      
       // Handle nested bullet points (lines starting with spaces and -)
       if (/^\s+- /.test(line)) {
         return (
@@ -168,23 +167,24 @@ function App() {
     setInput("");
     setLoading(true);
     try {
-      const res = await axios.post("/api/chat", userMessage);      // Expecting res.data to be an array of { agent, answer }
-      if (Array.isArray(res.data)) {
+      const res = await axios.post("/api/chat", userMessage);
+      // Expecting new structure: { items: [ { text: ... } ], ... }
+      if (res.data && Array.isArray(res.data.items) && res.data.items.length > 0) {
         setMessages((msgs) => [
           ...msgs,
-          ...res.data.map((item) => ({
-            sender: "agent",
-            agent: item.agent || "AI",
-            text: item.answer,
+          {
+            sender: "ai",
+            text: res.data.items[0].text || "No answer returned.",
             isFormatted: true
-          }))
+          }
         ]);
       } else {
         setMessages((msgs) => [
           ...msgs,
-          { sender: "ai", text: res.data.answer || "No answer returned.", isFormatted: false }
+          { sender: "ai", text: "No answer returned.", isFormatted: false }
         ]);
-      }    } catch (err) {
+      }
+    } catch (err) {
       setMessages((msgs) => [
         ...msgs,
         { sender: "ai", text: "Error: Could not get answer.", isFormatted: false }

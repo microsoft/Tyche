@@ -66,10 +66,22 @@ class SemanticKernelAgent:
         data_lookup_agent = self.create_agent(
             name="data_lookup",            
             instructions=f"""
-            The input will be a customer name, and then gather the data for next best action analysis.                      
+            The input will be a customer name, and then gather the data for next best action analysis. 
+            ONLY consider the Improve Order Velocity next best action.
+            Credit Holds and finance information should not be included in the analysis.
+
+            Check all orders without a hold release timestamp.
+            Include the following data in your analysis:
+            - Order number
+            - Order requested date
+            - Order release date
+            - Order status
+            - Order hold codes
+                              
                      
 
             Lets include SPECIFIC data from the plugins about the question. For each action item, cite the relevant plugin and include any specific data or values retrieved from the plugin.
+            
             """
         )
 
@@ -81,16 +93,17 @@ class SemanticKernelAgent:
             RULES FOR IMPROVING ORDER VELOCITY:
             {self.improve_order_velocity_rules}
 
-            Provide your answer as a numbered list of clear, concise action items to be taken.
-            Each action item should be specific, actionable, and directly address the customer's situation based on your analysis. Avoid general statements; focus on concrete steps. 
+            The answer should be a todo list of action items that the customer care expert can take to improve order velocity.
+            Each action item should be specific, actionable, and directly address the customer's situation based on your analysis. 
+            Avoid general statements; provide concrete steps. 
             Also provide SPECIFIC data from the plugins about the question. For each action item, cite the relevant plugin and include any specific data or values retrieved from the plugin that support your recommendation.
-            Example format:
-            1. Review the customer's account for outstanding credit holds.
-            2. Contact the Credit Team to request release of any unresolved C2 holds.
-            3. If past due AR is identified, coordinate with the Collections Team for an update.
-            4. Follow up with the Finance Team if RR holds remain unreleased and the order requested date is not in the future.
+            
 
             Ensure each action item is tailored to the scenario and leverages available plugin data.
+
+            ###EXAMPLE OUTPUT:####
+            - Check SO number 12345 for C2 credit holds.
+            - Order number 98765 is still on hold but past order realease date with HOLD CODE:XYZ.  Connect with team to release hold.
 """)
         return [data_lookup_agent,reviewer_agents]
 
