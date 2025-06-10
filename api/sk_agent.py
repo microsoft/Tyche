@@ -6,8 +6,6 @@ from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 
 from api.plugins.improve_order_velocity_plugin import ImproveOrderVelocityPlugin
-from api.plugins.increase_credit_limit_plugin import IncreaseCreditLimitPlugin
-from api.plugins.invoice_aging_plugin import InvoiceAgingPlugin
 from .plugins.threshold_plugin import ThresholdPlugin
 from .plugins.account_owner_plugin import AccountOwnerPlugin
 
@@ -45,16 +43,12 @@ class SemanticKernelAgent:
         
     
         threshold_plugin_instance = ThresholdPlugin()
-        # increase_credit_limit_plugin_instance = IncreaseCreditLimitPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
-        # invoice_aging_plugin_instance = InvoiceAgingPlugin(search_endpoint=AZURE_SEARCH_ENDPOINT,search_key=AZURE_SEARCH_KEY)
         account_owner_plugin_instance = AccountOwnerPlugin()
         improve_order_velocity_plugin_instance = ImproveOrderVelocityPlugin()
         kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
         kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
         kernel.add_plugin(improve_order_velocity_plugin_instance, plugin_name="ImproveOrderVelocityPlugin")
-        # kernel.add_plugin(increase_credit_limit_plugin_instance, plugin_name="IncreaseCreditLimitPlugin")
-        # kernel.add_plugin(invoice_aging_plugin_instance, plugin_name="InvoiceAgingPlugin")
-
+      
         return ChatCompletionAgent(
             name=name,
             instructions=instructions,
@@ -71,19 +65,56 @@ class SemanticKernelAgent:
         """
         action_review_agent = self.create_agent(
             name="ActionReview",            
-            instructions="""
-            You are an analyst specializing in determining the Next Best Action (NBA) for customers using the threshold plugin.
+            instructions=f"""
+            You are an analyst specializing in determining the Next Best Action (NBA) for customer.
+            You will get a customer name, and then determine the next best action to take based on the data provided by the plugins.
 
             ROLE AND RESPONSIBILITIES:
             - Analyze the provided data and recommend the most appropriate next steps for the customer
-            - Only use information from the knowledge base and threshold plugin to support your answer
-            - There may be more than one possible answer to the query, so provide all relevant data
-            - If the question is about the account owner, use the account owner plugin to get data
-            - If the question is about improving order velocity, use the improve order velocity plugin to get data
+            - Use the plugins to gather specific information about the customer's situation
 
             RULES FOR IMPROVING ORDER VELOCITY:
+            {self.improve_order_velocity_plugin_instance}
+            
 
-            1. C2 CREDIT HOLDS: Improve Order Velocity
+            Provide your answer as a numbered list of clear, concise action items to be taken.
+            Each action item should be specific, actionable, and directly address the customer's situation based on your analysis. Avoid general statements; focus on concrete steps. 
+            Also provide SPECIFIC data from the plugins about the question. For each action item, cite the relevant plugin and include any specific data or values retrieved from the plugin that support your recommendation.
+            Example format:
+            1. Review the customer's account for outstanding credit holds.
+            2. Contact the Credit Team to request release of any unresolved C2 holds.
+            3. If past due AR is identified, coordinate with the Collections Team for an update.
+            4. Follow up with the Finance Team if RR holds remain unreleased and the order requested date is not in the future.
+
+            Ensure each action item is tailored to the scenario and leverages available plugin data.
+            """
+        )
+
+
+        return [action_review_agent]
+
+    async def chat(self, user: str, message: str):
+        agents = self.get_agents()
+        concurrent_orchestration = ConcurrentOrchestration(members=agents)
+
+        runtime = InProcessRuntime()
+        runtime.start()
+
+        orchestration_result = await concurrent_orchestration.invoke(
+            task=message,
+            runtime=runtime,
+        )
+
+        value = await orchestration_result.get(timeout=20)
+        results = []
+        for item in value:
+            results.append({"agent": item.name, "answer": item.content})
+
+        await runtime.stop_when_idle()
+        return results
+
+
+    improve_order_velocity_plugin_instance = """1. C2 CREDIT HOLDS: Improve Order Velocity
             a. If a C2 hold has not been released, reach out to Credit Team for support releasing the hold or next steps required
             b. Identify the bill-to account numbers placed on credit hold
             c. Review the bill-to accounts placed on credit hold: do any accounts have negative available credit limit?
@@ -114,48 +145,4 @@ class SemanticKernelAgent:
                     1. When is the order release date?
                         a. If in the future, no action
                     2. If in the past, check order in E1 for updates and reach out to appropriate internal team for update/action
-
-            ### EXAMPLE OUTPUT FORMAT ###
-            User: What is the next best action for the customer and who is the owner?
-            Response:
-            - Offer a discount on their next purchase
-            - Increase Credit Limit to 50,000
-            - Account Owner: Bob Smith
-            """
-        )
-
-
-        # account_owner_agent = self.create_agent(
-        #     name="AccountOwner",
-        #     instructions="You manage the relationship between an employee account owner and a customer.  Answer only questions from the knowledge base.",
-        #     index_name="account-owner"              
-        # )
-
-        
-        # threshold_agent = self.create_agent(
-        #     name="Threshold",
-        #     instructions="You are and analyst that will examine the data to determine the next best action for the customer.  Answer only questions from the knowledge base.",
-        #     index_name="threshold"
-        # )
-
-        return [action_review_agent]
-
-    async def chat(self, user: str, message: str):
-        agents = self.get_agents()
-        concurrent_orchestration = ConcurrentOrchestration(members=agents)
-
-        runtime = InProcessRuntime()
-        runtime.start()
-
-        orchestration_result = await concurrent_orchestration.invoke(
-            task=message,
-            runtime=runtime,
-        )
-
-        value = await orchestration_result.get(timeout=20)
-        results = []
-        for item in value:
-            results.append({"agent": item.name, "answer": item.content})
-
-        await runtime.stop_when_idle()
-        return results
+                    """
