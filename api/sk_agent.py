@@ -63,19 +63,23 @@ class SemanticKernelAgent:
     def get_agents(self) -> list[Agent]:
         """Return a list of agents that will participate in the concurrent orchestration.
         """
-        action_review_agent = self.create_agent(
-            name="ActionReview",            
+        data_lookup_agent = self.create_agent(
+            name="data_lookup",            
             instructions=f"""
-            You are an analyst specializing in determining the Next Best Action (NBA) for customer.
-            You will get a customer name, and then determine the next best action to take based on the data provided by the plugins.
+            The input will be a customer name, and then gather the data for next best action analysis.                      
+                     
 
-            ROLE AND RESPONSIBILITIES:
-            - Analyze the provided data and recommend the most appropriate next steps for the customer
-            - Use the plugins to gather specific information about the customer's situation
+            Lets include SPECIFIC data from the plugins about the question. For each action item, cite the relevant plugin and include any specific data or values retrieved from the plugin.
+            """
+        )
 
-            RULES FOR IMPROVING ORDER VELOCITY:
-            {self.improve_order_velocity_plugin_instance}
+        reviewer_agents = self.create_agent(
+            name="Reviewer",            
+            instructions=f"""
+            You are a Reviewer agent specializing in reviewing the Next Best Action (NBA) for customer.
             
+            RULES FOR IMPROVING ORDER VELOCITY:
+            {self.improve_order_velocity_rules}
 
             Provide your answer as a numbered list of clear, concise action items to be taken.
             Each action item should be specific, actionable, and directly address the customer's situation based on your analysis. Avoid general statements; focus on concrete steps. 
@@ -87,11 +91,8 @@ class SemanticKernelAgent:
             4. Follow up with the Finance Team if RR holds remain unreleased and the order requested date is not in the future.
 
             Ensure each action item is tailored to the scenario and leverages available plugin data.
-            """
-        )
-
-
-        return [action_review_agent]
+""")
+        return [data_lookup_agent,reviewer_agents]
 
     async def chat(self, user: str, message: str):
         agents = self.get_agents()
@@ -114,7 +115,7 @@ class SemanticKernelAgent:
         return results
 
 
-    improve_order_velocity_plugin_instance = """1. C2 CREDIT HOLDS: Improve Order Velocity
+    improve_order_velocity_rules = """1. C2 CREDIT HOLDS: Improve Order Velocity
             a. If a C2 hold has not been released, reach out to Credit Team for support releasing the hold or next steps required
             b. Identify the bill-to account numbers placed on credit hold
             c. Review the bill-to accounts placed on credit hold: do any accounts have negative available credit limit?
