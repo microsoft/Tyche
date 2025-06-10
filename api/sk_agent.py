@@ -1,7 +1,7 @@
 import os
 import logging
 from semantic_kernel import Kernel
-from semantic_kernel.agents import Agent, ChatCompletionAgent, ConcurrentOrchestration
+from semantic_kernel.agents import Agent, ChatCompletionAgent, SequentialOrchestration
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 
@@ -96,23 +96,23 @@ class SemanticKernelAgent:
 
     async def chat(self, user: str, message: str):
         agents = self.get_agents()
-        concurrent_orchestration = ConcurrentOrchestration(members=agents)
+        sequential_orchestration = SequentialOrchestration(members=agents)
 
         runtime = InProcessRuntime()
         runtime.start()
 
-        orchestration_result = await concurrent_orchestration.invoke(
+        orchestration_result = await sequential_orchestration.invoke(
             task=message,
             runtime=runtime,
         )
 
         value = await orchestration_result.get(timeout=20)
-        results = []
-        for item in value:
-            results.append({"agent": item.name, "answer": item.content})
+        # results = []
+        # for item in value:
+        #     results.append({"agent": item.name, "answer": item.content})
 
         await runtime.stop_when_idle()
-        return results
+        return value
 
 
     improve_order_velocity_rules = """1. C2 CREDIT HOLDS: Improve Order Velocity
