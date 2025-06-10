@@ -63,17 +63,6 @@ class SemanticKernelAgent:
             plugins=[AccountOwnerPlugin()]
         )
 
-        final_answer_agent = ChatCompletionAgent(
-            name="FinalAnswerAgent",
-            description="An agent that provides the final answer with no additional questions or comments.",
-            instructions="Provide the final answer to the user without any additional questions or comments.",
-            service=AzureChatCompletion(
-                endpoint=AZURE_OPENAI_ENDPOINT,
-                api_key=AZURE_OPENAI_KEY,
-                deployment_name=AZURE_OPENAI_DEPLOYMENT
-            ),
-            plugins=[] 
-        )
         threshold_review_agent = ChatCompletionAgent(
             name="ThresholdReview", 
             description="Agent that reviews the threshold for the next best action and determines the account owner.",           
@@ -149,9 +138,8 @@ class SemanticKernelAgent:
                 source_agent=support_agent.name,
                 target_agents={
                     threshold_review_agent.name: "Transfer to this agent first to determine the next best action (NBA).",
-                    order_velocity_agent.name: "Transfer to this agent if they need to Improve Order Velocity",
+                    order_velocity_agent.name: "Transfer to this agent if the Next Best Action is to Improve Order Velocity",
                     account_owner_agent.name: "Transfer to this agent if the account owner needs to be determined",
-                    final_answer_agent.name: "Transfer to this agent if the finish reason is stop to provide the final answer with no additional questions or comments.",
                 },
             )
             .add(
@@ -171,7 +159,7 @@ class SemanticKernelAgent:
                 )
         )
 
-        return [support_agent, account_owner_agent, final_answer_agent, threshold_review_agent, order_velocity_agent], handoffs
+        return [support_agent, account_owner_agent, threshold_review_agent, order_velocity_agent], handoffs
 
     def agent_response_callback(self, message: ChatMessageContent) -> None:
         """Observer function to print the messages from the agents. Only append if from FinalAnswerAgent."""
@@ -194,7 +182,9 @@ class SemanticKernelAgent:
         runtime.start()
 
         orchestration_result = await handoff_orchestration.invoke(
-            task=message,
+            task=f"""{message}
+                    Provide the final answer to the user as a step-by-step series of tasks for a customer care agent to execute. Each step should be clear, actionable, and concise. Do not include any additional questions or comments.
+                    """,
             runtime=runtime,
         )
 
