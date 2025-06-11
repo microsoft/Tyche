@@ -116,6 +116,7 @@ h2 {
   padding-left: 20px;
   position: relative;
   line-height: 1.6;
+  list-style: none;
 }
 
 .bullet-point::before {
@@ -290,6 +291,7 @@ h2 {
 .bullet-point.nested {
   margin-left: 20px;
   font-size: 0.95em;
+  list-style: none;
 }
 
 .bullet-point.nested::before {
