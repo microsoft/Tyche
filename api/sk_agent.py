@@ -5,9 +5,11 @@ from semantic_kernel.agents import Agent, ChatCompletionAgent, SequentialOrchest
 from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 
+
 from api.plugins.improve_order_velocity_plugin import ImproveOrderVelocityPlugin
 from .plugins.threshold_plugin import ThresholdPlugin
 from .plugins.account_owner_plugin import AccountOwnerPlugin
+from .plugins.email_plugin import EmailPlugin
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -37,7 +39,8 @@ class SemanticKernelAgent:
             AzureChatCompletion(
                 endpoint=AZURE_OPENAI_ENDPOINT,
                 api_key=AZURE_OPENAI_KEY,
-                deployment_name=AZURE_OPENAI_DEPLOYMENT
+                deployment_name=AZURE_OPENAI_DEPLOYMENT,
+                api_version="2025-01-01-preview"
             )
         )
         
@@ -45,9 +48,11 @@ class SemanticKernelAgent:
         threshold_plugin_instance = ThresholdPlugin()
         account_owner_plugin_instance = AccountOwnerPlugin()
         improve_order_velocity_plugin_instance = ImproveOrderVelocityPlugin()
+        email_plugin_instance = EmailPlugin()
         kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
         kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
         kernel.add_plugin(improve_order_velocity_plugin_instance, plugin_name="ImproveOrderVelocityPlugin")
+        kernel.add_plugin(email_plugin_instance, plugin_name="EmailPlugin")
       
         return ChatCompletionAgent(
             name=name,
@@ -56,7 +61,8 @@ class SemanticKernelAgent:
             service=AzureChatCompletion(
                 endpoint=AZURE_OPENAI_ENDPOINT,
                 api_key=AZURE_OPENAI_KEY,
-                deployment_name=AZURE_OPENAI_DEPLOYMENT
+                deployment_name=AZURE_OPENAI_DEPLOYMENT,
+                api_version="2025-01-01-preview"
             ),
         )
 
@@ -97,7 +103,8 @@ class SemanticKernelAgent:
             Each action item should be specific, actionable, and directly address the customer's situation based on your analysis. 
             Avoid general statements; provide concrete steps. 
             Also provide SPECIFIC data from the plugins about the question. For each action item, cite the relevant plugin and include any specific data or values retrieved from the plugin that support your recommendation.
-            
+            Not only return the action items, send an email to the customer care expert with the action items and any relevant data from the plugins.
+            The email should be formatted in HTML for readability.
 
             Ensure each action item is tailored to the scenario and leverages available plugin data.
 
@@ -119,7 +126,7 @@ class SemanticKernelAgent:
             runtime=runtime,
         )
 
-        value = await orchestration_result.get(timeout=20)
+        value = await orchestration_result.get()
         # results = []
         # for item in value:
         #     results.append({"agent": item.name, "answer": item.content})
