@@ -37,10 +37,10 @@ class SemanticKernelAgent:
         kernel = Kernel()
         kernel.add_service(
             AzureChatCompletion(
-                endpoint=AZURE_OPENAI_ENDPOINT,
                 api_key=AZURE_OPENAI_KEY,
                 deployment_name=AZURE_OPENAI_DEPLOYMENT,
-                api_version="2025-01-01-preview"
+                api_version="2025-01-01-preview",
+                base_url=AZURE_OPENAI_ENDPOINT
             )
         )
         
@@ -59,10 +59,10 @@ class SemanticKernelAgent:
             instructions=instructions,
             kernel=kernel,
             service=AzureChatCompletion(
-                endpoint=AZURE_OPENAI_ENDPOINT,
                 api_key=AZURE_OPENAI_KEY,
                 deployment_name=AZURE_OPENAI_DEPLOYMENT,
-                api_version="2025-01-01-preview"
+                api_version="2025-01-01-preview",
+                base_url=AZURE_OPENAI_ENDPOINT
             ),
         )
 
