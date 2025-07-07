@@ -50,7 +50,7 @@ class SemanticKernelAgent:
         improve_order_velocity_plugin_instance = ImproveOrderVelocityPlugin()
         email_plugin_instance = EmailPlugin()
         kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
-        kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
+        # kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
         kernel.add_plugin(improve_order_velocity_plugin_instance, plugin_name="ImproveOrderVelocityPlugin")
         kernel.add_plugin(email_plugin_instance, plugin_name="EmailPlugin")
       
@@ -106,6 +106,7 @@ class SemanticKernelAgent:
             Not only return the action items, send an email to the customer care expert with the action items and any relevant data from the plugins.
             The email should be formatted in HTML for readability.
 
+
             Ensure each action item is tailored to the scenario and leverages available plugin data.
 
             ###EXAMPLE OUTPUT:####
@@ -113,6 +114,10 @@ class SemanticKernelAgent:
             - Order number 98765 is still on hold but past order realease date with HOLD CODE:XYZ.  Connect with team to release hold.
 """)
         return [data_lookup_agent,reviewer_agents]
+    
+
+            #     Not only return the action items, send an email to the customer care expert with the action items and any relevant data from the plugins.
+            # The email should be formatted in HTML for readability.
 
     async def chat(self, user: str, message: str):
         agents = self.get_agents()

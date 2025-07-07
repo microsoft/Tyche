@@ -1,11 +1,13 @@
 from semantic_kernel.functions import kernel_function
 from .base_vector_search_plugin import BaseVectorSearchPlugin
+import os
 
 class ImproveOrderVelocityPlugin(BaseVectorSearchPlugin):
     """Plugin to enable Azure AI Search improve order velocity search capabilities."""
 
     def __init__(self):
-        super().__init__("improve-order-velocity")
+        IMPROVE_ORDER_VELOCITY_INDEX_NAME = os.getenv("IMPROVE_ORDER_VELOCITY_INDEX_NAME")
+        super().__init__(IMPROVE_ORDER_VELOCITY_INDEX_NAME)
 
     @kernel_function(
         description="Improve order velocity search Azure AI Search index for relevant information",
