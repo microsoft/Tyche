@@ -51,7 +51,7 @@ class SemanticKernelAgent:
         # improve_order_velocity_plugin_instance = ImproveOrderVelocityPlugin()
         # email_plugin_instance = EmailPlugin()
         kernel.add_plugin(threshold_plugin_instance, plugin_name="ThresholdPlugin")
-        # kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
+        # # kernel.add_plugin(account_owner_plugin_instance, plugin_name="AccountOwnerPlugin")
         # kernel.add_plugin(improve_order_velocity_plugin_instance, plugin_name="ImproveOrderVelocityPlugin")
         # kernel.add_plugin(email_plugin_instance, plugin_name="EmailPlugin")
       
