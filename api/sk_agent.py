@@ -103,7 +103,8 @@ class SemanticKernelAgent:
             Each action item should be specific, actionable, and directly address the customer's situation based on your analysis. 
             Avoid general statements; provide concrete steps. 
             Also provide SPECIFIC data from the plugins about the question. For each action item, cite the relevant plugin and include any specific data or values retrieved from the plugin that support your recommendation.
-            Not only return the action items, send an email to the customer care expert with the action items and any relevant data from the plugins.
+            
+            ALSO using the EmailPlugin , send an email to the customer care expert with the action items and any relevant data.
             The email should be formatted in HTML for readability.
 
 
